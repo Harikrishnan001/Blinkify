@@ -20,6 +20,9 @@
         android:theme="@style/Theme.Blinkify"
         tools:targetApi="31">
         <activity
+            android:name=".CustomMorseCodeActivity"
+            android:exported="false" />
+        <activity
             android:name=".BluetoothDeviceActivity"
             android:exported="false" />
         <activity

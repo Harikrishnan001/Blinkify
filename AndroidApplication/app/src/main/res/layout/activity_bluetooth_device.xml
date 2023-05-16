@@ -26,7 +26,7 @@
 
             <TextView
                 android:id="@+id/blinkDelayTitle"
-                android:layout_width="130dp"
+                android:layout_width="140dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:breakStrategy="balanced"
@@ -64,7 +64,7 @@
 
             <TextView
                 android:id="@+id/resetDurationTitle"
-                android:layout_width="130dp"
+                android:layout_width="140dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:breakStrategy="simple"
@@ -85,6 +85,43 @@
 
             <Button
                 android:id="@+id/setResetDuration"
+                android:layout_width="120dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:lines="1"
+                android:text="Set" />
+
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:padding="12dp">
+
+            <TextView
+                android:id="@+id/normalBlinkText"
+                android:layout_width="140dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:breakStrategy="simple"
+                android:gravity="center"
+                android:lines="2"
+                android:text="Normal Duration(ms)" />
+
+            <EditText
+                android:id="@+id/normalBlinkDuration"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
+                android:layout_weight="1"
+                android:ems="10"
+                android:inputType="numberDecimal"
+                android:text="100" />
+
+            <Button
+                android:id="@+id/setNormalBlinkDuration"
                 android:layout_width="120dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -118,6 +155,16 @@
                 android:text="Clear"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <Button
+                android:id="@+id/addCustom"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="24dp"
+                android:text="Add Custom"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@+id/clear"
                 app:layout_constraintTop_toTopOf="parent" />
         </androidx.constraintlayout.widget.ConstraintLayout>
 

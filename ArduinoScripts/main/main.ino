@@ -2,10 +2,11 @@
 
 #define IR_PIN 3
 #define LED_PIN 13
-#define BUZZER_PIN 10
+#define BUZZER_PIN 12
 #define BUZZER_FREQ 1000
 
 int BLINK_DELAY = 600;
+int NORMAL_BLINK_DURATION=100;
 int RESET_TIME = 2000;
 
 long int blink_duration;
@@ -37,7 +38,7 @@ void loop()
       {
           BLINK_DELAY = value;
           makeNoise(300);
-      }
+      }      
       else if (option == 1) // RESET_TIME
       {
           RESET_TIME = value;
@@ -49,11 +50,19 @@ void loop()
         delay(100);
         makeNoise(100);
       }
+      else if(option==3){
+        NORMAL_BLINK_DURATION=value;
+        makeNoise(300);      
+      }
       Serial.print("New blink delay:");
       Serial.println(BLINK_DELAY);
       Serial.print("New reset time:");
       Serial.println(RESET_TIME);
+      Serial.print("New normal blink duration:");
+      Serial.println(NORMAL_BLINK_DURATION);
     }
+    
+    
 
   int ir_new=digitalRead(IR_PIN);
 
@@ -73,7 +82,7 @@ void loop()
       blink_duration=blink_end_time-blink_start_time;
       unblink_start_time=blink_end_time;
 
-      if(blink_duration<=BLINK_DELAY && blink_duration>100) //if short blink
+      if(blink_duration<=BLINK_DELAY && blink_duration>NORMAL_BLINK_DURATION) //if short blink
       {
         BTSerial.write((uint8_t)0);
         makeNoise(100);

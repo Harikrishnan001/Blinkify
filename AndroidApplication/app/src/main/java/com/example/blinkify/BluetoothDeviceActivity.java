@@ -1,50 +1,39 @@
 package com.example.blinkify;
 
 import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.text.HtmlCompat;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothDevice;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.text.Spanned;
-import android.text.method.ScrollingMovementMethod;
-import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
-import java.io.DataInput;
-import java.io.DataInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class BluetoothDeviceActivity extends AppCompatActivity {
 
     TextView  deviceName,message;
-    EditText resetDuration, blinkDelay;
-    Button setBlinkDelay, setResetDuration, clear,disconnect;
+    EditText resetDuration, blinkDelay,normalBlinkDuration;
+    Button setBlinkDelay, setResetDuration, clear,disconnect,addCustom,setNormalBlinkDuration;
     int count = 0;
     String receivedData = "";
     String englishContent = "";
@@ -52,9 +41,11 @@ public class BluetoothDeviceActivity extends AppCompatActivity {
     BluetoothDevice bluetoothDevice;
     HashMap<String,Integer> wordFrequencies;
     HashMap<String,String> characterMapping;
-    private static final String FILE_NAME="corpus.txt";
+
     FileHandler fileHandler;
     WordCompletion wordPredictor;
+    ActivityResultLauncher<Intent> customMorseCodeActivityLauncher;
+    ArrayList<MorseCodeDataItem> morseCodeMappings;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,6 +61,7 @@ public class BluetoothDeviceActivity extends AppCompatActivity {
         findViews();
         registerListeners();
 
+        customMorseCodeActivityLauncher=getCustomMorseCodeActivityLauncher();
         //message.setMovementMethod(new ScrollingMovementMethod());
     }
 
@@ -77,13 +69,15 @@ public class BluetoothDeviceActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
 
-        fileHandler=new FileHandler(FILE_NAME,this);
+        fileHandler=new FileHandler(this);
+        morseCodeMappings=fileHandler.readMorseCodeMappingsFromFile();
         connector=new Connector(bluetoothDevice,this,handler);
         connector.start();
-        wordFrequencies=fileHandler.readFromFile();
+        wordFrequencies=fileHandler.readWordFrequencyFromFile();
         wordPredictor=new WordCompletion(wordFrequencies);
         blinkDelay.setText(String.valueOf(getPreferences(MODE_PRIVATE).getInt("blinkDelay",600)));
         resetDuration.setText(String.valueOf(getPreferences(MODE_PRIVATE).getInt("resetDuration",2000)));
+        normalBlinkDuration.setText(String.valueOf(getPreferences(MODE_PRIVATE).getInt("normalBlinkDuration",100)));
     }
 
     private void findViews() {
@@ -95,6 +89,9 @@ public class BluetoothDeviceActivity extends AppCompatActivity {
         clear = findViewById(R.id.clear);
         disconnect=findViewById(R.id.disconnect);
         message=findViewById(R.id.message);
+        addCustom=findViewById(R.id.addCustom);
+        normalBlinkDuration=findViewById(R.id.normalBlinkDuration);
+        setNormalBlinkDuration=findViewById(R.id.setNormalBlinkDuration);
     }
 
     private void registerListeners() {
@@ -144,12 +141,38 @@ public class BluetoothDeviceActivity extends AppCompatActivity {
                 return true;
             }
         });
+        addCustom.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent i=new Intent(BluetoothDeviceActivity.this,CustomMorseCodeActivity.class);
+                customMorseCodeActivityLauncher.launch(i);
+            }
+        });
+        setNormalBlinkDuration.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                connector.send("3:"+normalBlinkDuration.getText().toString());
+                getPreferences(MODE_PRIVATE).edit().putInt("normalBlinkDuration",Integer.parseInt(resetDuration.getText().toString()));
+            }
+        });
+    }
 
+    private ActivityResultLauncher<Intent> getCustomMorseCodeActivityLauncher(){
+        return registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), new ActivityResultCallback<ActivityResult>() {
+            @Override
+            public void onActivityResult(ActivityResult result) {
+                if(result.getResultCode()== Activity.RESULT_OK){
+                    showToast("Success");
+                }else{
+                    showToast("Operation failed");
+                }
+            }
+        });
     }
 
     public void processData() {
         String s = decode(receivedData);
-        if (s.equals("REDUCE"))
+        if (s.equals("BACKSPACE"))
             englishContent = englishContent.substring(0, englishContent.length() - 1);
         else if(s.equals("BEEP"))
             connector.send("2:0");
@@ -204,92 +227,15 @@ public class BluetoothDeviceActivity extends AppCompatActivity {
 
     public String decode (String toEncode) {
         String morse = toEncode;
+        boolean foundInMap=false;
 
-        if (toEncode.equalsIgnoreCase(".-"))
-            morse = "a";
-        else if (toEncode.equalsIgnoreCase("-..."))
-            morse = "b";
-        else if (toEncode.equalsIgnoreCase("-.-."))
-            morse = "c";
-        else if (toEncode.equalsIgnoreCase("-.."))
-            morse = "d";
-        else if (toEncode.equalsIgnoreCase("."))
-            morse = "e";
-        else if (toEncode.equalsIgnoreCase("..-."))
-            morse = "f";
-        else if (toEncode.equalsIgnoreCase("--."))
-            morse = "g";
-        else if (toEncode.equalsIgnoreCase("...."))
-            morse = "h";
-        else if (toEncode.equalsIgnoreCase(".."))
-            morse = "i";
-        else if (toEncode.equalsIgnoreCase(".---"))
-            morse = "j";
-        else if (toEncode.equalsIgnoreCase("-.-"))
-            morse = "k";
-        else if (toEncode.equalsIgnoreCase(".-.."))
-            morse = "l";
-        else if (toEncode.equalsIgnoreCase("--"))
-            morse = "m";
-        else if (toEncode.equalsIgnoreCase("-."))
-            morse = "n";
-        else if (toEncode.equalsIgnoreCase("---"))
-            morse = "o";
-        else if (toEncode.equalsIgnoreCase(".--."))
-            morse = "p";
-        else if (toEncode.equalsIgnoreCase("--.-"))
-            morse = "q";
-        else if (toEncode.equalsIgnoreCase(".-."))
-            morse = "r";
-        else if (toEncode.equalsIgnoreCase("..."))
-            morse = "s";
-        else if (toEncode.equalsIgnoreCase("-"))
-            morse = "t";
-        else if (toEncode.equalsIgnoreCase("..-"))
-            morse = "u";
-        else if (toEncode.equalsIgnoreCase("...-"))
-            morse = "v";
-        else if (toEncode.equalsIgnoreCase(".--"))
-            morse = "w";
-        else if (toEncode.equalsIgnoreCase("-..-"))
-            morse = "x";
-        else if (toEncode.equalsIgnoreCase("-.--"))
-            morse = "y";
-        else if (toEncode.equalsIgnoreCase("--.."))
-            morse = "z";
-        else if (toEncode.equalsIgnoreCase("-----"))
-            morse = "0";
-        else if (toEncode.equalsIgnoreCase(".----"))
-            morse = "1";
-        else if (toEncode.equalsIgnoreCase("..---"))
-            morse = "2";
-        else if (toEncode.equalsIgnoreCase("...--"))
-            morse = "3";
-        else if (toEncode.equalsIgnoreCase("....-"))
-            morse = "4";
-        else if (toEncode.equalsIgnoreCase("....."))
-            morse = "5";
-        else if (toEncode.equalsIgnoreCase("-...."))
-            morse = "6";
-        else if (toEncode.equalsIgnoreCase("--..."))
-            morse = "7";
-        else if (toEncode.equalsIgnoreCase("---.."))
-            morse = "8";
-        else if (toEncode.equalsIgnoreCase("----."))
-            morse = "9";
-        else if (toEncode.equalsIgnoreCase("......"))//To add space
-            morse = " ";
-        else if (toEncode.equalsIgnoreCase(".......")) {//To pop previous entry
-            morse = "REDUCE";
-        }
-        else if(toEncode.equalsIgnoreCase("...---...")){//SOS
-            morse="SOS";
-        }
-        else if(toEncode.equalsIgnoreCase(".....-")) {//beep pattern
-            morse="BEEP";
-        }
-        else
-            morse ="";
+        for(MorseCodeDataItem dataItem:morseCodeMappings)
+            if(toEncode.equalsIgnoreCase(dataItem.morseCodeValue)) {
+                morse = dataItem.englishValue;
+                foundInMap=true;
+            }
+        if(!foundInMap)
+            morse="";
         return morse;
     }
 
